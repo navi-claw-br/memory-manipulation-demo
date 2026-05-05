@@ -1,46 +1,20 @@
-// SPDX-License-Identifier: MIT
-/*
- * ReadNumber.java — A simple Java program that:
- *   1. Reads a 1- or 2-digit number from stdin
- *   2. Waits for Enter
- *   3. Prints the number
- *
- * Without the kernel module: prints the number as typed.
- * With the kernel module:   prints 15 (or the configured value).
- *
- * Same principle as the C version — the kernel module intercepts
- * the write() syscall and manipulates the buffer in kernel space.
- */
-
 import java.util.Scanner;
 
+/**
+ * ReadNumber — Simple Java program that reads a number from stdin
+ * and prints it. When the kernel module is loaded, any numeric input
+ * is silently replaced with 15 by the hooked read() syscall.
+ */
 public class ReadNumber {
-
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
 
-        System.out.print("Digite um numero de ate 2 digitos: ");
+        System.out.print("Type a number and press Enter: ");
         System.out.flush();
 
-        String input = scanner.nextLine().trim();
+        String input = scanner.nextLine();
 
-        // Validate: must be a 1- or 2-digit number
-        if (input.isEmpty() || input.length() > 2) {
-            System.out.println("Entrada invalida. Use 1 ou 2 digitos.");
-            scanner.close();
-            return;
-        }
-
-        for (int i = 0; i < input.length(); i++) {
-            if (!Character.isDigit(input.charAt(i))) {
-                System.out.println("Entrada invalida. Use apenas digitos.");
-                scanner.close();
-                return;
-            }
-        }
-
-        int number = Integer.parseInt(input);
-        System.out.println("Numero lido: " + number);
+        System.out.println("You entered: " + input);
 
         scanner.close();
     }

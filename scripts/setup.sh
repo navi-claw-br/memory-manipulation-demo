@@ -1,31 +1,29 @@
 #!/bin/bash
-# setup.sh — Install dependencies and compile all components
-# SPDX-License-Identifier: MIT
-set -e
+#
+# setup.sh — Install dependencies for the memory-manipulation-demo project
+#
+# Detects the distribution (Fedora or Ubuntu) and installs the required
+# packages: kernel development headers, GCC, Java, and make.
+#
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+set -euo pipefail
 
-echo "============================================"
-echo "  Memory Manipulation Demo — Setup"
-echo "============================================"
-echo ""
+echo "=== memory-manipulation-demo: Setup ==="
 
-# --- Install dependencies ---
-echo "=== Step 1: Installing system dependencies ==="
-if command -v apt-get &>/dev/null; then
-    sudo apt-get update
-    sudo apt-get install -y \
-        build-essential \
-        linux-headers-$(uname -r) \
-        gcc \
-        make \
-        default-jdk \
-        default-jre \
-        dkms \
-        git
-elif command -v dnf &>/dev/null; then
-    sudo dnf groupinstall -y "Development Tools"
+detect_distro() {
+    if [ -f /etc/fedora-release ]; then
+        echo "fedora"
+    elif [ -f /etc/lsb-release ] && grep -qi ubuntu /etc/lsb-release 2>/dev/null; then
+        echo "ubuntu"
+    elif [ -f /etc/debian_version ]; then
+        echo "debian"
+    else
+        echo "unknown"
+    fi
+}
+
+install_fedora() {
+    echo "[+] Detected Fedora. Installing packages..."
     sudo dnf install -y \
         kernel-devel \
         kernel-headers \
@@ -33,53 +31,38 @@ elif command -v dnf &>/dev/null; then
         make \
         java-17-openjdk \
         java-17-openjdk-devel \
+        elfutils-libelf-devel \
         git
-elif command -v pacman &>/dev/null; then
-    sudo pacman -S --noconfirm \
-        base-devel \
-        linux-headers \
+}
+
+install_ubuntu() {
+    echo "[+] Detected Ubuntu/Debian. Installing packages..."
+    sudo apt-get update
+    sudo apt-get install -y \
+        linux-headers-$(uname -r) \
         gcc \
         make \
-        jdk-openjdk \
+        default-jdk \
         git
-else
-    echo "WARNING: Unknown package manager. Install dependencies manually."
-    echo "Required: build-essential, linux-headers, gcc, make, java (jdk+jre)"
-fi
-
-echo ""
-echo "=== Step 2: Compiling Kernel Module ==="
-cd "$PROJECT_DIR/kernel-module"
-make clean
-make
-echo "  -> memory_hook.ko built successfully"
-
-echo ""
-echo "=== Step 3: Compiling C Program ==="
-cd "$PROJECT_DIR/userspace-c"
-make clean
-make
-echo "  -> read_number built successfully"
-
-echo ""
-echo "=== Step 4: Compiling Java Program ==="
-cd "$PROJECT_DIR/userspace-java"
-javac ReadNumber.java 2>/dev/null || {
-    echo "  WARNING: javac not found. Install JDK and re-run."
 }
-echo "  -> ReadNumber.class built successfully"
+
+distro=$(detect_distro)
+
+case "$distro" in
+    fedora)
+        install_fedora
+        ;;
+    ubuntu|debian)
+        install_ubuntu
+        ;;
+    *)
+        echo "[-] Unsupported distribution. Please install manually:"
+        echo "    - kernel development headers"
+        echo "    - gcc, make"
+        echo "    - Java (JDK 17+)"
+        exit 1
+        ;;
+esac
 
 echo ""
-echo "============================================"
-echo "  Setup complete!"
-echo "============================================"
-echo ""
-echo "Next steps:"
-echo "  ./scripts/load_module.sh    — Load the kernel module"
-echo "  ./scripts/unload_module.sh  — Unload the kernel module"
-echo ""
-echo "  # Test C version with module loaded:"
-echo "  echo '42' | ./userspace-c/read_number"
-echo ""
-echo "  # Test Java version with module loaded:"
-echo "  echo '42' | java -cp userspace-java ReadNumber"
+echo "[✓] Setup complete. Run 'cd kernel-module && make' to build the module."
